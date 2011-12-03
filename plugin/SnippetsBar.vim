@@ -49,7 +49,7 @@ if !exists('g:snippetsbar_left')
 endif
 
 if !exists('g:snippetsbar_width')
-  let g:snippetsbar_width = 20
+  let g:snippetsbar_width = 10
 endif
 
 if !exists('g:snippetsbar_autoclose')
@@ -98,7 +98,6 @@ function! s:MapKeys()
         "\ :call <SID>ShowSnippetExpansion()<CR>
 
   nnoremap <script> <silent> <buffer> q    :call <SID>CloseWindow()<CR>
-  nnoremap <script> <silent> <buffer> <F1> :call <SID>ToggleHelp()<CR>
 endfunction
 
 
@@ -186,7 +185,6 @@ function! s:InitWindow(autoclose)
   let s:compare_typeinfo = {}
 
   let s:is_maximized = 0
-  let s:short_help   = 1
 
   let w:autoclose = a:autoclose
 
@@ -305,8 +303,6 @@ function! s:RenderContent(word)
 
   silent %delete _
 
-  call s:PrintHelp()
-
   "let typeinfo = s:known_types[fileinfo.ftype]
 
   " Print tags
@@ -349,25 +345,6 @@ function! s:RenderContent(word)
   endif
 endfunction
 
-" s:PrintHelp() {{{2
-function! s:PrintHelp()
-    if !g:snippetsbar_compact && s:short_help
-        silent 0put ='\" Press <F1> for help'
-        silent  put _
-    elseif !s:short_help
-        silent 0put ='\" SnippetsBar keybindings'
-        silent  put ='\"'
-        silent  put ='\" --------- General ---------'
-        silent  put ='\" <Enter>   : Expand current snippet at cursor position'
-        silent  put ='\" <Space>   : Preview snippet expansion'
-        silent  put ='\"'
-        silent  put ='\" ---------- Misc -----------'
-        silent  put ='\" q          : Close window'
-        silent  put ='\" <F1>       : Remove help'
-        silent  put _
-    endif
-endfunction
-
 " s:RenderKeepView() {{{2
 " The gist of this function was taken from NERDTree by Martin Grenfell.
 function! s:RenderKeepView(...)
@@ -402,20 +379,6 @@ endfunction
 "
 " User Actions {{{1
 
-" s:ToggleHelp() {{{2
-function! s:ToggleHelp()
-    let s:short_help = !s:short_help
-
-    " Prevent highlighting from being off after adding/removing the help text
-    match none
-
-    call s:RenderContent()
-
-    execute 1
-    redraw
-endfunction
-
-"
 " Helper Functions {{{1
 
 " s:CleanUp() {{{2
@@ -424,7 +387,6 @@ function! s:CleanUp()
 
     unlet s:is_maximized
     unlet s:compare_typeinfo
-    unlet s:short_help
 endfunction
 
 " s:QuitIfOnlyWindow() {{{2
