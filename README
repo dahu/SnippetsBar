@@ -1,0 +1,5 @@
+SnippetsBar displays a (possibly filtered) list of available snippets for the
+current file and word under the cursor.
+
+Code repository:
+https://github.com/dahu/SnippetsBar
