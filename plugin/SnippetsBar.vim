@@ -67,6 +67,7 @@ endif
 let s:snippets_init_done    = 0
 let s:autocommands_done     = 0
 let s:window_expanded       = 0
+let s:snippets              = []
 
 " s:CreateAutocommands() {{{2
 function! s:CreateAutocommands()
@@ -395,8 +396,7 @@ endfunction
 
 " s:PrintSnippets {{{2
 function! s:PrintSnippets(word)
-  let snippets = map(snipMate#GetSnippetsForWordBelowCursor(a:word, '*', 0), 'v:val[0]')
-  silent put =snippets
+  silent put =s:snippets
 endfunction
 
 "
@@ -445,7 +445,8 @@ endfunction
 " s:AutoUpdate() {{{2
 function! s:AutoUpdate()
   let p = searchpos('\W\zs\w\+\%#', 'bnW')
-  let word = strpart(getline('.'), p[1], col('.')-p[1])
+  let word = strpart(getline('.'), p[1]-1, col('.')-p[1])
+  call s:Snippets(word)
     " Don't do anything if snippetsbar is not open or if we're in the snippetsbar window
     let snippetsbarwinnr = bufwinnr('__SnippetsBar__')
     if snippetsbarwinnr == -1 || &filetype == 'snippetsbar'
@@ -471,6 +472,9 @@ function! s:AutoUpdate()
     "call s:HighlightTag()
 endfunction
 
+function! s:Snippets(word)
+  let s:snippets = map(snipMate#GetSnippetsForWordBelowCursor(a:word, '*', 0), 'v:val[0]')
+endfunction
 
 " Commands {{{1
 command! -nargs=0 SnippetsBarToggle        call s:ToggleWindow()
