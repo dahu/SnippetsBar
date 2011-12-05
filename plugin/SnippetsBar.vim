@@ -69,6 +69,64 @@ let s:autocommands_done     = 0
 let s:window_expanded       = 0
 let s:snippets              = []
 
+" From :help <SID>
+function s:SID()
+  return matchstr(expand('<sfile>'), '<SNR>\d\+_\zeSID$')
+endfun
+
+let s:engines = {
+      \ 'snipmate': {
+      \   'list_func': 'snipMate#GetSnippetsForWordBelowCursor',
+      \   'list_func_args': 'a:word,"*",0',
+      \   'list_map': 'v:val[0]',
+      \   },
+      \ 'xptemplate': {
+      \   'list_func': 'sort',
+      \   'list_func_args': 'filter(keys(b:xptemplateData.filetypes.vim.allTemplates), ''v:val !~ "\\W\\|^_" && v:val =~? "^".a:word'')'
+      \   },
+      \ 'ultisnips': {
+      \   'list_func': s:SID().'ultisnips_helper',
+      \   'list_func_args': 'a:word'
+      \   }
+      \ }
+if exists('g:snippetsbar_engines')
+  " Add extra entries
+  call extend(s:engines, g:snippetsbar_engines, 'keep')
+  " Merge common entries
+  call map(s:engines,
+        \ 'has_key(g:snippetsbar_engines, v:key)'.
+        \ '? extend(s:engines[v:key], g:snippetsbar_engines[v:key], "force")'.
+        \ ': v:val')
+endif
+
+augroup SnippetsBarAutoCmds
+  autocmd VimEnter * call s:set_engine()
+augroup END
+
+function! s:ultisnips_helper(word)
+  exec "py vim.command('let snippets = \\'' + str(UltiSnips_Manager._snips('".a:word."', True)) + '\\'')"
+  let snippets = substitute(snippets, 'Snippet(\([^,]\+\)\%("[^"]*"\|[^"]\)\{-})\(,\s*\)\?','''\1''\2', 'g')
+  return = eval(snippets)
+endfunction
+
+function! s:set_engine()
+  if exists('g:snippetsbar_engine')
+    let s:engine = s:engines[tolower(g:snippetsbar)]
+  elseif exists('g:loaded_snips')
+    let s:engine = s:engines.snipmate
+  elseif exists('g:__XPTEMPLATE_VIM__')
+    let s:engine = s:engines.xptemplate
+  elseif exists('g:did_UltiSnips_vim')
+    let s:engine = s:engines.ultisnips
+  else
+    "TODO: What to do here?
+    echoe 'No snippet engine was found!'
+  endif
+  if !has_key(s:engine, 'pattern')
+    let s:engine.pattern = '\W\zs\w\+\%#'
+  endif
+endfunction
+
 " s:CreateAutocommands() {{{2
 function! s:CreateAutocommands()
     augroup SnippetsBarAutoCmds
@@ -77,7 +135,7 @@ function! s:CreateAutocommands()
         autocmd BufUnload  __SnippetsBar__ call s:CleanUp()
         "autocmd CursorHold __SnippetsBar__ call s:ShowSnippetExpansion()
 
-        autocmd CursorMovedI * call
+        autocmd CursorMovedI,InsertEnter * call
                     \ s:AutoUpdate()
         autocmd BufDelete * call
                     \ s:CleanupFileinfo(fnamemodify(expand('<afile>'), ':p'))
@@ -406,7 +464,7 @@ endfunction
 
 " s:AutoUpdate() {{{2
 function! s:AutoUpdate()
-  let p = searchpos('\W\zs\w\+\%#', 'bnW')
+  let p = searchpos(s:engine.pattern, 'bnW')
   let word = strpart(getline('.'), p[1]-1, col('.')-p[1])
   call s:Snippets(word)
     " Don't do anything if snippetsbar is not open or if we're in the snippetsbar window
@@ -434,8 +492,14 @@ function! s:AutoUpdate()
     "call s:HighlightTag()
 endfunction
 
+" s:Snippets(word) {{{2
 function! s:Snippets(word)
-  let s:snippets = map(snipMate#GetSnippetsForWordBelowCursor(a:word, '*', 0), 'v:val[0]')
+  let args = eval('['.s:engine.list_func_args.']')
+  let s:snippets = call(s:engine.list_func, args)
+  if has_key(s:engine, 'list_map')
+    call map(s:snippets, s:engine.list_map)
+    echom 'map'
+  endif
 endfunction
 
 " Commands {{{1
