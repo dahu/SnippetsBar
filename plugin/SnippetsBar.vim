@@ -81,14 +81,15 @@ let s:engines = {
       \   'list_map': 'v:val[0]',
       \   },
       \ 'xptemplate': {
-      \   'list_func': 'sort',
-      \   'list_func_args': 'filter(keys(b:xptemplateData.filetypes.vim.allTemplates), ''v:val !~ "\\W\\|^_" && v:val =~? "^".a:word'')'
+      \   'list_func': s:SID().'xptemplate_helper',
+      \   'list_func_args': 'a:word'
       \   },
       \ 'ultisnips': {
       \   'list_func': s:SID().'ultisnips_helper',
       \   'list_func_args': 'a:word'
       \   }
       \ }
+
 if exists('g:snippetsbar_engines')
   " Add extra entries
   call extend(s:engines, g:snippetsbar_engines, 'keep')
@@ -105,8 +106,16 @@ augroup END
 
 function! s:ultisnips_helper(word)
   exec "py vim.command('let snippets = \\'' + str(UltiSnips_Manager._snips('".a:word."', True)) + '\\'')"
-  let snippets = substitute(snippets, 'Snippet(\([^,]\+\)\%("[^"]*"\|[^"]\)\{-})\(,\s*\)\?','''\1''\2', 'g')
-  return = eval(snippets)
+  let snippets = substitute(snippets, 'Snippet(\([^,]\+\)\%("\%(\\.\|[^\\"]\)*"\|[^"]\)\{-})\(,\s*\)\?','\1\2', 'g')
+  return sort(split(snippets[1:-2],',\s*'))
+endfunction
+
+function! s:xptemplate_helper(word)
+  if !exists('b:did_xpt')
+    call XPTparseSnippets()
+    let b:did_xpt = 1
+  endif
+  return sort(filter(keys(b:xptemplateData.filetypes.vim.allTemplates), 'v:val !~ ''\W\|^_'' && v:val =~? "^".a:word'))
 endfunction
 
 function! s:set_engine()
@@ -134,6 +143,7 @@ function! s:CreateAutocommands()
         autocmd BufEnter   __SnippetsBar__ nested call s:QuitIfOnlyWindow()
         autocmd BufUnload  __SnippetsBar__ call s:CleanUp()
         "autocmd CursorHold __SnippetsBar__ call s:ShowSnippetExpansion()
+        autocmd FileType * unlet! b:did_xpt
 
         autocmd CursorMovedI,InsertEnter * call
                     \ s:AutoUpdate()
