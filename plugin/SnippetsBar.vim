@@ -22,7 +22,6 @@ if &cp || exists('g:loaded_snippetsbar')
   finish
 endif
 
-
 " Initialization {{{1
 
 " Basic init {{{2
@@ -76,20 +75,24 @@ endfun
 
 let s:engines = {
       \ 'snipmate': {
+      \   'detect': 'exists("g:loaded_snips")',
       \   'list_func': 'snipMate#GetSnippetsForWordBelowCursor',
       \   'list_func_args': 'a:word,"*",0',
-      \   'list_map': 'v:val[0]',
+      \   'list_map': 'v:val[0]'
       \   },
       \ 'xptemplate': {
+      \   'detect': 'exists(''g:__XPTEMPLATE_VIM__'')',
       \   'list_func': s:SID().'xptemplate_helper',
       \   'list_func_args': 'a:word'
       \   },
       \ 'ultisnips': {
+      \   'detect': 'exists(''g:did_UltiSnips_vim'')',
       \   'list_func': s:SID().'ultisnips_helper',
       \   'list_func_args': 'a:word'
       \   }
       \ }
 
+" TODO: Should we allow only one engine?
 if exists('g:snippetsbar_engines')
   " Add extra entries
   call extend(s:engines, g:snippetsbar_engines, 'keep')
@@ -99,42 +102,6 @@ if exists('g:snippetsbar_engines')
         \ '? extend(s:engines[v:key], g:snippetsbar_engines[v:key], "force")'.
         \ ': v:val')
 endif
-
-augroup SnippetsBarAutoCmds
-  autocmd VimEnter * call s:set_engine()
-augroup END
-
-function! s:ultisnips_helper(word)
-  exec "py vim.command('let snippets = \\'' + str(UltiSnips_Manager._snips('".a:word."', True)) + '\\'')"
-  let snippets = substitute(snippets, 'Snippet(\([^,]\+\)\%("\%(\\.\|[^\\"]\)*"\|[^"]\)\{-})\(,\s*\)\?','\1\2', 'g')
-  return sort(split(snippets[1:-2],',\s*'))
-endfunction
-
-function! s:xptemplate_helper(word)
-  if !exists('b:did_xpt')
-    call XPTparseSnippets()
-    let b:did_xpt = 1
-  endif
-  return sort(filter(keys(b:xptemplateData.filetypes.vim.allTemplates), 'v:val !~ ''\W\|^_'' && v:val =~? "^".a:word'))
-endfunction
-
-function! s:set_engine()
-  if exists('g:snippetsbar_engine')
-    let s:engine = s:engines[tolower(g:snippetsbar)]
-  elseif exists('g:loaded_snips')
-    let s:engine = s:engines.snipmate
-  elseif exists('g:__XPTEMPLATE_VIM__')
-    let s:engine = s:engines.xptemplate
-  elseif exists('g:did_UltiSnips_vim')
-    let s:engine = s:engines.ultisnips
-  else
-    "TODO: What to do here?
-    echoe 'No snippet engine was found!'
-  endif
-  if !has_key(s:engine, 'pattern')
-    let s:engine.pattern = '\W\zs\w\+\%#'
-  endif
-endfunction
 
 " s:CreateAutocommands() {{{2
 function! s:CreateAutocommands()
@@ -186,6 +153,14 @@ endfunction
 
 " s:OpenWindow() {{{2
 function! s:OpenWindow(autoclose)
+  call s:set_engine()
+  if !exists('s:engine')
+    " XXX There is nothing to show.
+    echohl ErrorMsg
+    echom 'SnippetsBar could not find a snippets engine!'
+    echohl None
+    return
+  endif
   " If the snippetsbar window is already open jump to it
   let snippetsbarwinnr = bufwinnr('__SnippetsBar__')
   if snippetsbarwinnr != -1
@@ -240,6 +215,7 @@ function! s:InitWindow(autoclose)
   endif
 
   setlocal nofoldenable
+  setlocal foldcolumn=0
   " Reset fold settings in case a plugin set them globally to something
   " expensive. Apparently 'foldexpr' gets executed even if 'foldenable' is
   " off, and then for every appended line (like with :put).
@@ -448,6 +424,50 @@ endfunction
 " User Actions {{{1
 
 " Helper Functions {{{1
+
+" s:ultisnips_helper() {{{2
+function! s:ultisnips_helper(word)
+  exec "py vim.command('let snippets = \\'' + str(UltiSnips_Manager._snips('".a:word."', True)) + '\\'')"
+  let snippets = substitute(snippets, 'Snippet(\([^,]\+\)\%("\%(\\.\|[^\\"]\)*"\|[^"]\)\{-})\(,\s*\)\?','\1\2', 'g')
+  return sort(split(snippets[1:-2],',\s*'))
+endfunction
+
+" s:xptemplate_helper() {{{2
+function! s:xptemplate_helper(word)
+  if !exists('b:did_xpt')
+    call XPTparseSnippets()
+    let b:did_xpt = 1
+  endif
+  return sort(filter(keys(b:xptemplateData.filetypes[&filetype].allTemplates), 'v:val !~ ''\W\|^_'' && v:val =~? "^".a:word'))
+endfunction
+
+" s:set_engine() {{{2
+function! s:set_engine()
+  if exists('g:snippetsbar_engine')
+    let s:engine = s:engines[tolower(g:snippetsbar)]
+  else
+    for key in keys(s:engines)
+      if eval(s:engines[key].detect)
+        let s:engine = s:engines[key]
+        let s:engine.name = key
+        break
+      endif
+    endfor
+  endif
+  if !exists('s:engine')
+    "TODO: What to do here?
+    echohl ErrorMsg
+    echom 'SnippetsBar: No snippet engine was found!'
+    echohl None
+  else
+    if !has_key(s:engine, 'pattern')
+      let s:engine.pattern = '\W\zs\w\+\%#'
+    endif
+    if !has_key(s:engine, 'list_func_args')
+      let s:engine.list_func_args = ''
+    endif
+  endif
+endfunction
 
 " s:CleanUp() {{{2
 function! s:CleanUp()
