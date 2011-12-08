@@ -107,15 +107,14 @@ endif
 function! s:CreateAutocommands()
     augroup SnippetsBarAutoCmds
         autocmd!
-        autocmd BufEnter   __SnippetsBar__ nested call s:QuitIfOnlyWindow()
-        autocmd BufUnload  __SnippetsBar__ call s:CleanUp()
-        "autocmd CursorHold __SnippetsBar__ call s:ShowSnippetExpansion()
-        autocmd FileType * unlet! b:did_xpt
-
-        autocmd CursorMovedI,InsertEnter * call
-                    \ s:AutoUpdate()
-        autocmd BufDelete * call
-                    \ s:CleanupFileinfo(fnamemodify(expand('<afile>'), ':p'))
+        autocmd BufEnter   __SnippetsBar__ nested
+              \ call s:QuitIfOnlyWindow()
+        autocmd BufUnload  __SnippetsBar__
+              \ call s:CleanUp()
+        autocmd FileType   *
+              \ unlet! b:did_xpt
+        autocmd CursorMovedI,InsertEnter *
+              \ call s:AutoUpdate()
     augroup END
 
     let s:autocommands_done = 1
@@ -494,32 +493,17 @@ endfunction
 
 " s:AutoUpdate() {{{2
 function! s:AutoUpdate()
+  " Don't do anything if snippetsbar is not open or if we're in the snippetsbar window
+  let snippetsbarwinnr = bufwinnr('__SnippetsBar__')
+  if snippetsbarwinnr == -1 || &filetype == 'snippetsbar'
+    return
+  endif
+
   let p = searchpos(s:engine.pattern, 'bnW')
   let word = strpart(getline('.'), p[1]-1, col('.')-p[1])
   call s:Snippets(word)
-    " Don't do anything if snippetsbar is not open or if we're in the snippetsbar window
-    let snippetsbarwinnr = bufwinnr('__SnippetsBar__')
-    if snippetsbarwinnr == -1 || &filetype == 'snippetsbar'
-      return
-    endif
 
-    "" If we don't have an entry for the file by now something must have gone
-    "" wrong, so don't change the snippetsbar content
-    "if empty(fileinfo)
-        "return
-    "endif
-
-    " Display the snippetsbar content
-    "call s:RenderContent(fileinfo)
-    call s:RenderContent(word)
-
-    "" Call setCurrent after rendering so RenderContent can check whether the
-    "" same file is redisplayed
-    "if !empty(fileinfo)
-        "call s:known_files.setCurrent(fileinfo)
-    "endif
-
-    "call s:HighlightTag()
+  call s:RenderContent(word)
 endfunction
 
 " s:Snippets(word) {{{2
