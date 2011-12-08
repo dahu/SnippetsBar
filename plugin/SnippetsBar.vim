@@ -114,7 +114,7 @@ function! s:CreateAutocommands()
               \ call s:CleanUp()
         autocmd FileType   *
               \ unlet! b:did_xpt
-        autocmd CursorMovedI,InsertEnter *
+        autocmd CursorMovedI *
               \ call s:AutoUpdate()
     augroup END
 
