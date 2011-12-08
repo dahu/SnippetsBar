@@ -1,7 +1,8 @@
 "" ============================================================================
 " File:        SnippetsBar.vim
 " Description: List the current file's snippets in a sidebar, a la Tagbar
-" Author:      Barry Arthur <barry.arthur@gmail.com>
+" Authors:     Barry Arthur <barry dot arthur at gmail dot com>
+"              Israel Chauca <israelchauca at gmail dot com>
 " Licence:     Vim licence
 " Website:     http://dahu.github.com/SnippetsBar/
 " Version:     0.1
@@ -169,10 +170,6 @@ function! s:OpenWindow(autoclose)
     return
   endif
 
-  "if !s:snippets_init_done
-  "call s:InitSnippets()
-  "endif
-
   " Expand the Vim window to accomodate for the SnippetsBar window if requested
   if g:snippetsbar_expand && !s:window_expanded && has('gui_running')
     let &columns += g:snippetsbar_width + 1
@@ -230,11 +227,6 @@ function! s:InitWindow(autoclose)
   let s:is_maximized = 0
 
   let w:autoclose = a:autoclose
-
-  "if has('balloon_eval')
-  "setlocal balloonexpr=SnippetsBarBalloonExpr()
-  "set ballooneval
-  "endif
 
   let cpoptions_save = &cpoptions
   set cpoptions&vim
@@ -307,18 +299,7 @@ endfunction
 
 " Display {{{1
 " s:RenderContent() {{{2
-"function! s:RenderContent(...)
 function! s:RenderContent(word)
-  "if a:0 == 1
-    "let fileinfo = a:1
-  "else
-    "let fileinfo = s:known_files.getCurrent()
-  "endif
-
-  "if empty(fileinfo)
-    "return
-  "endif
-
   let snippetsbarwinnr = bufwinnr('__SnippetsBar__')
 
   if &filetype == 'snippetsbar'
@@ -329,14 +310,6 @@ function! s:RenderContent(word)
     execute snippetsbarwinnr . 'wincmd w'
   endif
 
-  "if !empty(s:known_files.getCurrent()) &&
-        "\ fileinfo.fpath ==# s:known_files.getCurrent().fpath
-    "" We're redisplaying the same file, so save the view
-    "let saveline = line('.')
-    "let savecol  = col('.')
-    "let topline  = line('w0')
-  "endif
-
   let lazyredraw_save = &lazyredraw
   set lazyredraw
   let eventignore_save = &eventignore
@@ -346,39 +319,13 @@ function! s:RenderContent(word)
 
   silent %delete _
 
-  "let typeinfo = s:known_types[fileinfo.ftype]
-
-  " Print tags
-  "call s:PrintSnippets(fileinfo)
-  call s:PrintSnippets(a:word)
-
-  " Delete empty lines at the end of the buffer
-  for linenr in range(line('$'), 1, -1)
-    if getline(linenr) =~ '^$'
-      execute linenr . 'delete _'
-    else
-      break
-    endif
-  endfor
+  call s:PrintSnippets()
 
   setlocal nomodifiable
 
-  "if !empty(s:known_files.getCurrent()) &&
-        "\ fileinfo.fpath ==# s:known_files.getCurrent().fpath
-    "let scrolloff_save = &scrolloff
-    "set scrolloff=0
-
-    "call cursor(topline, 1)
-    "normal! zt
-    "call cursor(saveline, savecol)
-
-    "let &scrolloff = scrolloff_save
-  "else
-    " Make sure as much of the snippetsbar content as possible is shown in the
-    " window by jumping to the top after drawing
-    execute 1
-    call winline()
-  "endif
+ " Do we need this?
+  execute 1
+  call winline()
 
   let &lazyredraw  = lazyredraw_save
   let &eventignore = eventignore_save
@@ -388,34 +335,8 @@ function! s:RenderContent(word)
   endif
 endfunction
 
-" s:RenderKeepView() {{{2
-" The gist of this function was taken from NERDTree by Martin Grenfell.
-function! s:RenderKeepView(...)
-    if a:0 == 1
-        let line = a:1
-    else
-        let line = line('.')
-    endif
-
-    let curcol  = col('.')
-    let topline = line('w0')
-
-    call s:RenderContent()
-
-    let scrolloff_save = &scrolloff
-    set scrolloff=0
-
-    call cursor(topline, 1)
-    normal! zt
-    call cursor(line, curcol)
-
-    let &scrolloff = scrolloff_save
-
-    redraw
-endfunction
-
 " s:PrintSnippets {{{2
-function! s:PrintSnippets(word)
+function! s:PrintSnippets()
   silent put =s:snippets
 endfunction
 
@@ -443,7 +364,7 @@ endfunction
 " s:set_engine() {{{2
 function! s:set_engine()
   if exists('g:snippetsbar_engine')
-    let s:engine = s:engines[tolower(g:snippetsbar)]
+    let s:engine = s:engines[tolower(g:snippetsbar_engine)]
   else
     for key in keys(s:engines)
       if eval(s:engines[key].detect)
@@ -512,7 +433,7 @@ function! s:Snippets(word)
   let s:snippets = call(s:engine.list_func, args)
   if has_key(s:engine, 'list_map')
     call map(s:snippets, s:engine.list_map)
-    echom 'map'
+    "echom 'map'
   endif
 endfunction
 
