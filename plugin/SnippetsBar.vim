@@ -231,9 +231,9 @@ function! s:InitWindow(autoclose)
   let cpoptions_save = &cpoptions
   set cpoptions&vim
 
-  "if !hasmapto('JumpToTag', 'n')
-  "call s:MapKeys()
-  "endif
+  if !hasmapto('CloseWindow', 'n')
+    call s:MapKeys()
+  endif
 
   if !s:autocommands_done
     call s:CreateAutocommands()
